@@ -1,20 +1,29 @@
 import * as http from 'http';
 import * as debug from 'debug';
-import { validateConfigs } from './validators/configValidator';
-
+import { validateConfigs } from './validation';
 import App from './App';
 
 debug('ts-express:server');
 
-// Run Config Validator check
-validateConfigs((res) => {
-    if (res) {
+start();
+
+/**
+ * Checks for config validity, if valid - runs the server.
+ */
+async function start(): Promise<void> {
+    // Run Config Validator check
+    const areConfigsValid = await validateConfigs();
+
+    if (areConfigsValid) {
         run();
     }
-})
-// If valid, run server.
-function run() {
-    console.log('Database config valid, starting server...')
+}
+
+/**
+ * Runs the express server
+ */
+function run(): void {
+    console.log('Database config valid, starting server...');
     const port = normalizePort(process.env.PORT || 3000);
     App.set('port', port);
     
@@ -23,31 +32,31 @@ function run() {
     server.on('error', onError);
     server.on('listening', onListening);
 
-    
-    function normalizePort(val: number|string): number|string|boolean {
+    function normalizePort(val: number|string): number | string | boolean {
         let port: number = (typeof val === 'string') ? parseInt(val, 10) : val;
-        if (isNaN(port)) return val;
-        else if (port >= 0) return port;
-        else return false;
+        if (isNaN(port)) {
+            return val;
+        } else if (port >= 0) {
+            return port;
+        } else {
+            return false;
+        }
     }
-
+    
     function onError(error: NodeJS.ErrnoException): void {
         if (error.syscall !== 'listen') {
             throw error;
         }
         let bind = (typeof port === 'string') ? 'Pipe ' + port : 'Port ' + port;
-        
-        switch(error.code) {
+        switch (error.code) {
             case 'EACCES':
                 console.error(`${bind} requires elevated privileges`);
                 process.exit(1);
                 break;
-
             case 'EADDRINUSE':
                 console.error(`${bind} is already in use`);
                 process.exit(1);
                 break;
-
             default:
                 throw error;
         }
